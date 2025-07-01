@@ -1,0 +1,254 @@
+PL/SQL  Assignment
+
+
+
+Create Table Restaurant
+(
+    restaurantId number primary key,
+    restaurantName varchar2(30),
+    city varchar2(30),
+    email varchar2(30),
+    mobile varchar2(15),
+    rating number(9,2)
+);
+
+
+--> Implement Procedures to AddRestaurant, SearchByRestaurantId, UpdateRestaurant, DeleteRestaurantById
+
+
+________________________________________________________________________________________________________________
+
+
+Procedure to AddResTaurant
+
+create or replace Procedure prcAddRestaurant(rid Restaurant.restaurantId%type,
+rname Restaurant.restaurantName%type,
+ct Restaurant.city%type,
+em Restaurant.email%type,
+mb Restaurant.mobile%type,
+rt Restaurant.rating%type)
+as
+begin 
+INSERT INTO Restaurant (restaurantId,restaurantName,city,email,mobile,rating) values(rid,rname,ct,em,mb,rt);
+Exception
+When DUP_VAL_ON_INDEX THEN
+dbms_output.put_line('Restaurant ' || rname || ' Already Exists');
+end;
+/
+
+
+___________________________________________________________________________________________________________________
+
+
+Procedure to Search By ID
+
+
+Create or Replace Procedure prcSearchById(rid Restaurant.restaurantId%type)
+as
+rname Restaurant.restaurantName%type;
+ct Restaurant.city%type;
+em Restaurant.email%type;
+mb Restaurant.mobile%type;
+rt Restaurant.rating%type;
+begin
+SELECT restaurantName,city,email,mobile,rating INTO  rname,ct,em,mb,rt FROM Restaurant WHERE restaurantId=rid;
+dbms_output.put_line('Restaurant Name : ' || rname);
+dbms_output.put_line('City : ' || ct);
+dbms_output.put_line('Restaurant email : ' || em);
+dbms_output.put_line('Restaurant Number : ' || mb);
+dbms_output.put_line('Restaurant Rating : ' || rt);
+Exception
+When NO_DATA_FOUND THEN
+dbms_output.put_line('The Restaurant Id does not Exists ');
+end;
+/
+
+__________________________________________________________________________________________________________________
+
+Procedure to UpdateRestaurant by Id
+
+
+
+Create or Replace Procedure prcUpdateRes(rid Restaurant.restaurantId%type,
+rname Restaurant.restaurantName%type,
+ct Restaurant.city%type,
+em Restaurant.email%type,
+mb Restaurant.mobile%type,
+rt Restaurant.rating%type)
+as
+Begin
+UPDATE Restaurant set restaurantName=rname,city=ct,email=em,mobile=mb,rating=rt where restaurantId=rid;
+if SQL%ROWCOUNT =0 THEN
+  DBMS_OUTPUT.PUT_LINE('No Restaurant found with this Id: ' || rid);
+else
+dbms_output.Put_Line('Record Updated ');
+End if;
+Exception
+WHEN NO_DATA_FOUND then
+dbms_output.put_line('Error');
+End;
+/
+
+____________________________________________________________________________________________________________________
+
+Procedure to Delete the Restaurant
+
+
+create or Replace Procedure prcDeleteRes(rid Restaurant.restaurantId%type)
+as
+begin
+DELETE FROM Restaurant WHERE RestaurantId=rid;
+if SQL%ROWCOUNT =0 THEN
+  DBMS_OUTPUT.PUT_LINE('No Restaurant found with this Id: ' || rid);
+else
+dbms_output.Put_Line('Record Deleted ');
+End if;
+EXCEPTION
+WHEN NO_DATA_FOUND THEN
+dbms_output.Put_line('ENter the Correct ID ');
+END;
+/
+
+____________________________________________________________________________________________________________________
+
+Cursor to Display all the records
+
+Create or Replace Procedure prcShowAllRes
+AS
+Cursor cur_res is SELECT RestaurantName,city,email,mobile,rating from Restaurant;
+Begin 
+For rec in cur_res LOOP
+		dbms_output.put_line('Restaurant Name : ' || rec.restaurantName);
+		dbms_output.put_line('City : ' || rec.city);
+		dbms_output.put_line('Restaurant email : ' || rec.email);
+		dbms_output.put_line('Restaurant Number : ' || rec.mobile);
+		dbms_output.put_line('Restaurant Rating : ' || rec.rating);
+		dbms_output.put_line('____________________________');
+	end Loop;
+end;
+/
+
+___________________________________________________________________________________________________________________
+
+Out Parameter 
+
+CREATE OR REPLACE PROCEDURE prcSearchByIdparam(
+    rid   IN  Restaurant.restaurantId%TYPE,
+    rname OUT Restaurant.restaurantName%TYPE,
+    ct    OUT Restaurant.city%TYPE,
+    em    OUT Restaurant.email%TYPE,
+    mb    OUT Restaurant.mobile%TYPE,
+    rt    OUT Restaurant.rating%TYPE
+)
+AS
+BEGIN
+    SELECT restaurantName, city, email, mobile, rating
+    INTO rname, ct, em, mb, rt
+    FROM Restaurant
+    WHERE restaurantId = rid;
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        rname := NULL;
+        ct    := NULL;
+        em    := NULL;
+        mb    := NULL;
+        rt    := NULL;
+        DBMS_OUTPUT.PUT_LINE('No restaurant found with ID: ' || rid);
+END;
+/
+
+
+
+DECLARE
+    v_id     NUMBER := &Enter_Restaurant_Id;
+    v_name   Restaurant.RestaurantName%type;
+    v_city   Restaurant.city%type;
+    v_email  Restaurant.email%type;
+    v_mobile Restaurant.mobile%type;
+    v_rating Restaurant.rating%type;
+BEGIN
+    prcSearchByIDparam(v_id, v_name, v_city, v_email, v_mobile, v_rating);
+    
+    IF v_name IS NOT NULL THEN
+        DBMS_OUTPUT.PUT_LINE('Name    : ' || v_name);
+        DBMS_OUTPUT.PUT_LINE('City    : ' || v_city);
+        DBMS_OUTPUT.PUT_LINE('Email   : ' || v_email);
+        DBMS_OUTPUT.PUT_LINE('Mobile  : ' || v_mobile);
+        DBMS_OUTPUT.PUT_LINE('Rating  : ' || v_rating);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('No restaurant found with ID: ' || v_id);
+    END IF;
+END;
+/
+
+__________________________________________________________________________________
+
+TRIGGERS
+
+Create Table RestaurantBackup
+(
+   RbId number primary key,
+    restaurantId number,
+    restaurantName varchar2(30),
+    city varchar2(30),
+    email varchar2(30),
+    mobile varchar2(15),
+    rating number(9,2),
+    operation varchar2(30),
+    activityOn Date default sysdate
+);
+
+Insert operation: 
+
+CREATE OR REPLACE TRIGGER trg_insert_restaurant
+AFTER INSERT ON Restaurant
+FOR EACH ROW
+DECLARE
+    v_rbId NUMBER;
+BEGIN
+    SELECT NVL(MAX(RbId), 0) + 1 INTO v_rbId FROM RestaurantBackup;
+    INSERT INTO RestaurantBackup VALUES (
+        v_rbId, :NEW.restaurantId, :NEW.restaurantName, :NEW.city,
+        :NEW.email, :NEW.mobile, :NEW.rating, 'INSERT', SYSDATE
+    );
+END;
+/
+__________________________________________________________________________________
+
+update operation: 
+
+CREATE OR REPLACE TRIGGER trg_update_restaurant
+AFTER UPDATE ON Restaurant
+FOR EACH ROW
+DECLARE
+    v_rbId NUMBER;
+BEGIN
+    SELECT NVL(MAX(RbId), 0) + 1 INTO v_rbId FROM RestaurantBackup;
+    INSERT INTO RestaurantBackup VALUES (
+        v_rbId, :OLD.restaurantId, :OLD.restaurantName, :OLD.city,
+        :OLD.email, :OLD.mobile, :OLD.rating, 'UPDATE', SYSDATE
+    );
+END;
+/
+__________________________________________________________________________________
+
+Delete Operation:
+
+CREATE OR REPLACE TRIGGER trg_delete_restaurant
+AFTER DELETE ON Restaurant
+FOR EACH ROW
+DECLARE
+    v_rbId NUMBER;
+BEGIN
+    SELECT NVL(MAX(RbId), 0) + 1 INTO v_rbId FROM RestaurantBackup;
+    INSERT INTO RestaurantBackup VALUES (
+        v_rbId, :OLD.restaurantId, :OLD.restaurantName, :OLD.city,
+        :OLD.email, :OLD.mobile, :OLD.rating, 'DELETE', SYSDATE
+    );
+END;
+/
+
+______________________________________________________________________________________
+
+
